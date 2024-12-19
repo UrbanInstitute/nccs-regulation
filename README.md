@@ -13,64 +13,110 @@ The raw files that were provided by the research team at in **data-raw/tidy-stat
 
 The [**Digitized Legal Compendium**](https://urbaninstitute.github.io/nccs-regulation/dlc-research-guide.html) file is the primary data wrangling file for the first stages. It also suggests some standards for how to structure the file and format legal citations moving forward to scale teh work in the next phase. 
 
+The semi-clean file called **02-data-inter/ALL-STATES-FORMATTED.CSV** is here: <a href="https://raw.githubusercontent.com/UrbanInstitute/nccs-regulation/refs/heads/main/02-data-inter/ALL-STATES-FORMATTED.CSV" download="ALL-STATES-FORMATTED.CSV">DOWNLOAD</a>
 
+The big changes that were made: 
+
+- Variables were renamed for consistency and Legal Compendium descriptive labels were added. 
+- IDs were inconsistent in the raw files (state names were incorrect leading to duplicate IDs, other ID names were inconsistent throughout the individual state files) 
+- Text encoding from copied HTML was causing problems, so text fields were put through text sanitizers to remove any exotic encodings and ensure text is clean and consistent when stored in CSV files. 
+- Section numbering fields, which consist of numbers and punctuation, were being interpretted as dates or getting corrupted in the usual excel ways. To preserve the integrity a text tag needs to be added to the start of each text field. For example, the section fields now start with {SS}:
+- The Section Symbol (§) is non-unicode and thus was getting muddled, so it should be used sparingly. 
+
+Outstanding issues: 
+
+- [ ] The section fields need to be cleaned and reconciled. 
+- [ ] The Regulation Indicator field (**reg_indicator**) was inconsistent and it's unclear if it is accurate.  
+- [ ] Please review variable names to see if we can make them intuitive. 
+
+Currently we group the regulations as: 
+
+- reg_type (the high level column group in the legal compendium) 
+- reg_rule (each column of the LC) 
+- reg_body (which body is responsible for administering the regulation: AG, Other, and I added "Not Specified" for cases that were blank) 
+- reg_action (describes what type of regulation it is - requirement, exemption, remedy, etc.) 
+
+I debated instead using "reg_group and reg_type instead of reg_type and reg_rule). Open to suggestions. 
+
+## Demo Reports
+
+I played with descriptive stats but could not find a lot that was interesting or insightful beyond the basic coverage for specific types of laws and variance in the extensiveness of the regulatory environments across states. 
+
+Otherwise I think people might want to query the statutes: 
+
+1. By a regulatory type to see how laws vary across geographies 
+2. By a geograph to see what laws exist 
+3. By a combination of type and geography to look up a specific law
+
+These report templates were an attempt to render the text data in a way that makes it easy to digest. It also highlights the data integrity issues that need to be fixed. 
+
+I can still add the user interface but I need some feedback on what is actually useful. 
+
+We can create tables that look similar to the original LC Excel file with YES/NO in the cells and hyperlinks to the notes and text on each section. 
+
+|        |  REG1  |  REG2  |
+|--------|--------|--------|
+| STATE1 |  link  |  link  |
+| STATE2 |  link  |  link  |
+
+Just really wasn't sure what people want for an interface. 
 
 
 ## State-Level Reports
 
 Report templates that summarize nonprofit statutes covered within each state. 
 
-- [AlabamaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AL.html)
-- [AlaskaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AK.html)
-- [ArizonaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AZ.html)
-- [ArkansasState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AR.html)
-- [CaliforniaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CA.html)
-- [ColoradoState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CO.html)
-- [ConnecticutState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CT.html)
-- [DelawareState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/DE.html)
-- [FloridaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/FL.html)
-- [GeorgiaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/GA.html)
-- [HawaiiState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/HI.html)
-- [IdahoState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ID.html)
-- [IllinoisState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IL.html)
-- [IndianaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IN.html)
-- [IowaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IA.html)
-- [KansasState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/KS.html)
-- [KentuckyState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/KY.html)
-- [LouisianaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/LA.html)
-- [MaineState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ME.html)
-- [MarylandState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MD.html)
-- [MassachusettsState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MA.html)
-- [MichiganState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MI.html)
-- [MinnesotaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MN.html)
-- [MississippiState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MS.html)
-- [MissouriState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MO.html)
-- [MontanaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MT.html)
-- [NebraskaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NE.html)
-- [NevadaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NV.html)
-- [New HampshireState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NH.html)
-- [New JerseyState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NJ.html)
-- [New MexicoState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NM.html)
-- [New YorkState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NY.html)
-- [North CarolinaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NC.html)
-- [North DakotaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ND.html)
-- [OhioState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OH.html)
-- [OklahomaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OK.html)
-- [OregonState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OR.html)
-- [PennsylvaniaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/PA.html)
-- [Rhode IslandState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/RI.html)
-- [South CarolinaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/SC.html)
-- [South DakotaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/SD.html)
-- [TennesseeState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/TN.html)
-- [TexasState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/TX.html)
-- [UtahState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/UT.html)
-- [VermontState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/VT.html)
-- [VirginiaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/VA.html)
-- [WashingtonState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WA.html)
-- [Washington, D.C. Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/DC.html)
-- [West VirginiaState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WV.html)
-- [WisconsinState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WI.html)
-- [WyomingState Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WY.html)
+- [Alabama State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AL.html)  
+- [Alaska State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AK.html)  
+- [Arizona State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AZ.html)  
+- [Arkansas State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/AR.html)  
+- [California State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CA.html)  
+- [Colorado State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CO.html)  
+- [Connecticut State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/CT.html)  
+- [Delaware State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/DE.html)  
+- [Florida State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/FL.html)  
+- [Georgia State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/GA.html)  
+- [Hawaii State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/HI.html)  
+- [Idaho State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ID.html)  
+- [Illinois State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IL.html)  
+- [Indiana State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IN.html)  
+- [Iowa State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/IA.html)  
+- [Kansas State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/KS.html)  
+- [Kentucky State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/KY.html)  
+- [Louisiana State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/LA.html)  
+- [Maine State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ME.html)  
+- [Maryland State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MD.html)  
+- [Massachusetts State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MA.html)  
+- [Michigan State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MI.html)  
+- [Minnesota State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MN.html)  
+- [Mississippi State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MS.html)  
+- [Missouri State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MO.html)  
+- [Montana State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/MT.html)  
+- [Nebraska State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NE.html)  
+- [Nevada State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NV.html)  
+- [New Hampshire State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NH.html)  
+- [New Jersey State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NJ.html)  
+- [New Mexico State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NM.html)  
+- [New York State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NY.html)  
+- [North Carolina State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/NC.html)  
+- [North Dakota State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/ND.html)  
+- [Ohio State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OH.html)  
+- [Oklahoma State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OK.html)  
+- [Oregon State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/OR.html)  
+- [Pennsylvania State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/PA.html)  
+- [Rhode Island State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/RI.html)  
+- [South Carolina State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/SC.html)  
+- [South Dakota State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/SD.html)  
+- [Tennessee State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/TN.html)  
+- [Texas State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/TX.html)  
+- [Utah State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/UT.html)  
+- [Vermont State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/VT.html)  
+- [Virginia State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/VA.html)  
+- [Washington State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WA.html)  
+- [Washington, D.C. State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/DC.html)  
+- [West Virginia State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WV.html)  
+- [Wisconsin State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WI.html)  
+- [Wyoming State Report](https://urbaninstitute.github.io/nccs-regulation/reports/STATES/WY.html)  
 
 See the **STATE-REPORT-TEMPLATE.QMD** file for details on replicating. 
 
@@ -190,3 +236,4 @@ render_rule_report( RULE = "BIFURC" )
 # ALL TOGETHER
 purrr::walk( rules, make_links2 )
 ```
+
