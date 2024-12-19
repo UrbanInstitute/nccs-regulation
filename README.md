@@ -21,7 +21,9 @@ The big changes that were made:
 - IDs were inconsistent in the raw files (state names were incorrect leading to duplicate IDs, other ID names were inconsistent throughout the individual state files) 
 - Text encoding from copied HTML was causing problems, so text fields were put through text sanitizers to remove any exotic encodings and ensure text is clean and consistent when stored in CSV files. 
 - Section numbering fields, which consist of numbers and punctuation, were being interpretted as dates or getting corrupted in the usual excel ways. To preserve the integrity a text tag needs to be added to the start of each text field. For example, the section fields now start with {SS}:
-- The Section Symbol (§) is non-unicode and thus was getting muddled, so it should be used sparingly. 
+- The Section Symbol is non-unicode and thus was getting muddled, so it should be used sparingly (for example, it crashed this page when it was added). 
+
+![](img/section-symbol.png)
 
 Outstanding issues: 
 
