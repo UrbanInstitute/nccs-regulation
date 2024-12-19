@@ -1,0 +1,1039 @@
+---
+title: "Digitized Legal Compendium"
+author: 
+  - Jesse Lecy, ASU
+  - Teresa Harrison, Drexel
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    toc-location: body
+    toc-depth: 3
+    toc-expand: true
+    toc_float: false
+    df-print: paged
+---
+
+
+<br>
+<hr>
+<br>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( 
+  echo = TRUE, message=F, warning=F, 
+  fig.width = 10, fig.pos = 'H' )
+```
+
+
+
+```{r, echo=F}
+library( dplyr )
+library( kableExtra )
+library( knitr )
+library( pander )
+library( stringr )
+library( data.table )
+```
+
+```{r, echo=F}
+knit_print.data.frame <- function (x, options, ...) {
+  rmarkdown::paged_table(x, options) |>
+    rmarkdown:::print.paged_df()
+}
+
+registerS3method("knit_print", "data.frame", knit_print.data.frame)
+```
+
+
+# Combine State Files
+
+## Stacked Files
+
+```{r, echo=F}
+## Load State Files 
+
+# wd <- "C:/Users/jdlec/Dropbox (Personal)/00 - URBAN/legal-compendium/LC_Text_Data_Merge/legal-compendium"
+# setwd( wd )
+
+files <- 
+c("alabama.xlsx", "alaska.xlsx", "arizona.xlsx", 
+"arkansas.xlsx", "california.xlsx", "colorado.xlsx", "connecticut.xlsx", 
+"delaware.xlsx", "district-of-columbia.xlsx", "florida.xlsx", 
+"georgia.xlsx", "hawaii.xlsx", "idaho.xlsx", "illinois.xlsx", 
+"indiana.xlsx", "iowa.xlsx", "kansas.xlsx", "kentucky.xlsx", 
+"louisiana.xlsx", "maine.xlsx", "maryland.xlsx", 
+"massachusetts.xlsx", "michigan.xlsx", "minnesota.xlsx", "mississippi.xlsx", 
+"missouri.xlsx", "montana.xlsx", "nebraska.xlsx", "nevada.xlsx", 
+"new-hampshire.xlsx", "new-jersey.xlsx", "new-mexico.xlsx", "new-york.xlsx", 
+"north-carolina.xlsx", "north dakota.xlsx", "ohio.xlsx", "oklahoma.xlsx", 
+"oregon.xlsx", "pennsylvania.xlsx", "rhode-island.xlsx", "south-carolina.xlsx", 
+"south-dakota.xlsx", "tennessee.xlsx", "texas.xlsx", "utah.xlsx", 
+"vermont.xlsx", "virginia.xlsx", "washington.xlsx", "west-virginia.xlsx", 
+"wisconsin.xlsx", "wyoming.xlsx")
+
+read_fn_fx <- function( fn ){
+  fpath <- paste0( "01-data-raw/tidy-states/", fn )
+  d <- readxl::read_excel( fpath, col_types="text" )
+  return(d)
+}
+
+L <- purrr::map( files, read_fn_fx )
+dd <- dplyr::bind_rows( L ) |> as.data.frame()
+
+```
+
+
+```{r, echo=F}
+head(dd)
+```
+
+
+
+
+
+## Rename Variables
+
+```{r, echo=F}
+cw <-
+structure(list(V1 = c("Unnamed: 0.1", "Unnamed: 0", "ID-State", 
+"ID", "STATE", "Regulation Indicator", "Regulatory Type", "Regulatory Type Abbr", 
+"Regulatory Type Full", "Regulatory Body", "State", "division", 
+"Section Code", "section", "text", "Year legislation originally enacted", 
+"Year legislation changed", "Type of Change", "Notes", "section original", 
+"0", "1", "Section Code Re", "section1", "first_element"), V2 = c("id1", 
+"id2", "id3", "id4", "state", "reg_indicator", "reg_rule_label", 
+"reg_rule_abbr", "type_body_combined", "reg_body_label", "code_state", 
+"code_division", "code_section1", "code_section2", "code_text", 
+"code_year_enacted", "code_change_year", "code_change_type", 
+"notes", "section_original", "v0", "v1", "section_code_re", "section1", 
+"first_element")), class = "data.frame", row.names = c(NA, -25L
+))
+
+nm.old <- cw[["V1"]]
+nm.new <- cw[["V2"]]
+
+cw |> knitr::kable()
+```
+
+```{r, echo=F}
+setnames( dd, old = nm.old, new = nm.new )
+dd <- dd[nm.new] # reorder as well
+```
+
+<br>
+<hr>
+
+```{r, echo=F}
+head(dd)
+```
+
+## Fix Encodings
+
+When data is copied from websites or PDFs, saved in Excel, and later exported to CSV the encodings get messed up. The input text had "double mojibake" problems, meaning the encodings were mangled at least twice, usually once from copying from HTML and a second with how Excel stores text. It was especially the case with the "symbol" character used to denote statute numbers in legal citations. 
+
+These steps here ensure the text in the final dataset has a simple, standardized encoding so that text fields will not be mangled if read into stats programs. 
+
+**Problematic cases look like this:** 
+
+```{r, eval=F, echo=F}
+dd$notes[95]
+```
+
+
+```
+"\"(4) �\u0080\u009cpaid solicitor�\u0080\u009d means a person who is r
+equired to be registered under AS 45.68.010(b), and includes a person who 
+is employed, procured, or engaged, directly or indirectly, by a paid 
+solicitor to solicit, if the person is compensated; �\u0080\u009cpaid 
+solicitor�\u0080\u009d does not include\n          (A) an attorney l
+icensed to practice law in this or another state, an investment counselor, 
+an insurance company, or a supervised financial institution, to the extent 
+the attorney, investment counselor, insurance company, or supervised 
+financial institution advises the person on whether to make a contribution; 
+or\n\n          (B) a bona fide salaried officer, employee, or volunteer of 
+a charitable organization;\" AS 45.68.900"
+```
+
+```{r, echo=F}
+fix_encodings <- function(x){
+  x <- gsub( "[\u00a7]", "_SS_", x, perl = TRUE )
+  x <- textclean::replace_non_ascii( x )
+  x <- gsub("_SS_", "\u00a7", x, perl = TRUE )
+}
+```
+
+
+```{r, echo=F}
+fix.these <- 
+  c( "code_state", "code_division", 
+    "code_section1","code_section2", 
+    "code_text", "notes", 
+    "section_original", "v0", "v1", 
+    "section_code_re", "section1", "first_element" )
+
+dd[ fix.these ] <- 
+  dd[ fix.these ] %>% 
+  lapply( fix_encodings )
+```
+
+**Fixed:** 
+
+```{r, echo=F, results="asis"}
+cat( dd$notes[95] )
+```
+
+
+## Add Legal Compendium Fields
+
+
+![](img/legal-compendium-screenshot.png)
+
+```{r, echo=F}
+lc <-
+structure(list(reg_rule_abbr = c("AD", "AT", "BF", "CA", "CT", 
+"DS", "CC", "FF", "RG", "AF", "BO", "CF", "FC", "SD", "NT", "EI", 
+"FD", "FS", "FM", "GO", "HS", "HO", "JD", "MG", "NS", "OT", "PT", 
+"PO", "RL", "RE", "RO", "RM", "RC", "RA", "RF", "NO", "SA", "SO", 
+"VO", "VD"), reg_type = c("DISSOLV", "AUDITFI", "BIFURCD", "REPORTS", 
+"ORGTYPE", "REMEDYT", "FNDRAZE", "FNDRAZE", "REPORTS", "FNDRAZE", 
+"FNDRAZE", "FNDRAZE", "FNDRAZE", "FNDRAZE", "FNDRAZE", "ORGTYPE", 
+"ORGTYPE", "ORGTYPE", "ORGTYPE", "ORGTYPE", "HOSPCON", "ORGTYPE", 
+"DISSOLV", "REPORTS", "ORGTYPE", "ORGTYPE", "ORGTYPE", "ORGTYPE", 
+"REGILAW", "BIFURCD", "ORGTYPE", "REMEDYT", "ORGTYPE", "AUDITFI", 
+"HOSPCON", "HOSPCON", "REPORTS", "ORGTYPE", "ORGTYPE", "DISSOLV"
+), reg_type_label = c("Notice or Action for Dissolutions", "Audits", 
+"Bifurcation of charitable regulatory body", "Notice, Filing or Review of Transactions", 
+"Exemptions from Registering for Specific Organization Types", 
+"Defined remedies", "Oversight of professional fundraisers", 
+"Oversight of professional fundraisers", "Notice, Filing or Review of Transactions", 
+"Oversight of professional fundraisers", "Oversight of professional fundraisers", 
+"Oversight of professional fundraisers", "Oversight of professional fundraisers", 
+"Oversight of professional fundraisers", "Oversight of professional fundraisers", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Notice, Oversight or Filing of Hospital Conversions", "Exemptions from Registering for Specific Organization Types", 
+"Notice or Action for Dissolutions", "Notice, Filing or Review of Transactions", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Registration Law", "Bifurcation of charitable regulatory body", 
+"Exemptions from Registering for Specific Organization Types", 
+"Defined remedies", "Exemptions from Registering for Specific Organization Types", 
+"Audits", "Notice, Oversight or Filing of Hospital Conversions", 
+"Notice, Oversight or Filing of Hospital Conversions", "Notice, Filing or Review of Transactions", 
+"Exemptions from Registering for Specific Organization Types", 
+"Exemptions from Registering for Specific Organization Types", 
+"Notice or Action for Dissolutions"), reg_rule = c("ADMINI", 
+"THRESH", "BIFURC", "AMMEND", "CTRUST", "DISSOL", "VENTUR", "CNTRCT", 
+"FINANC", "ANNUAL", "BONDNG", "COMREG", "COUNSL", "DDONOR", "NOTICE", 
+"EDUCAT", "FNDYES", "FNDNOS", "MEMFRA", "GOVMNT", "STATUT", "HOSPIT", 
+"JUDICI", "MERGER", "NONSOL", "OTHTYP", "PTOEDU", "POLITI", "REGIST", 
+"REGIOF", "RELIGI", "BRDRMV", "CONGRE", "AUDITS", "FILING", "OVERSI", 
+"ASSETS", "SMALLO", "VETERA", "VOLUNT"), reg_rule_label = c("Administrative Dissolutions", 
+"Audit Threshold", "Bifurcated Regulatory Structure", "Certificate of Amendments", 
+"Charitable Trusts", "Dissolution", "Does the state oversee commercial-coventuring (e.g. by requiring that the co-venture be registered or by requiring that the charitable organization files the co-venture contract)?", 
+"Does the state require a copy of any contract between a charitable organization and a commercial fundraiser or fundraising counsel be filed with the regulator?", 
+"Does the state require annual financial reporting by charitable organizations in addition to filing a copy of the 990 with the regulator (if filing 990 is required)?", 
+"Does the state require annual financial reporting by commercial fundraisers?", 
+"Does the state require bonding of professional fundraisers?", 
+"Does the state require registration by commercial fundraisers?", 
+"Does the state require registration by fundraising counsel?", 
+"Does the state require specified disclosures to donors?", "Does the state require the fundraisers to provide notice to the regulator before any solicitation campaign (in addition to annual registration and/or filing the contract)?", 
+"Educational Institutions", "Foundations", "Foundations that don't solicit contributions", 
+"Fraternal/ Membership", "Governmental Organizations", "Has Statute", 
+"Hospitals", "Judicial Dissolutions", "Mergers", "Non-soliciting", 
+"Other", "Parent-Teacher Organizations", "Political Orgs", "Registration Law", 
+"Registration Office", "Religious Organizations", "Removal of Board Members", 
+"Reports to congress", "Requires Audit", "Requires Filing", "Requires Notice or Oversight", 
+"Sale of Assets", "Small organizations", "Veterans organizations", 
+"Voluntary Dissolutions"), reg_action = c("REQMNT", "REQMNT", 
+"REQMNT", "REQMNT", "EXMPTN", "REMEDY", "REQMNT", "REQMNT", "REQMNT", 
+"REQMNT", "REQMNT", "REQMNT", "REQMNT", "REQMNT", "REQMNT", "EXMPTN", 
+"EXMPTN", "EXMPTN", "EXMPTN", "EXMPTN", "REQMNT", "EXMPTN", "REQMNT", 
+"REQMNT", "EXMPTN", "EXMPTN", "EXMPTN", "EXMPTN", "EXMPTN", "REQMNT", 
+"EXMPTN", "REMEDY", "EXMPTN", "REQMNT", "REQMNT", "REQMNT", "REQMNT", 
+"EXMPTN", "EXMPTN", "REQMNT"), reg_action_label = c("requirement", 
+"requirement", "requirement", "requirement", "exemption", "remedy", 
+"requirement", "requirement", "requirement", "requirement", "requirement", 
+"requirement", "requirement", "requirement", "requirement", "exemption", 
+"exemption", "exemption", "exemption", "exemption", "requirement", 
+"exemption", "requirement", "requirement", "exemption", "exemption", 
+"exemption", "exemption", "exemption", "requirement", "exemption", 
+"remedy", "exemption", "requirement", "requirement", "requirement", 
+"requirement", "exemption", "exemption", "requirement")), class = c("tbl_df", 
+"tbl", "data.frame"), row.names = c(NA, -40L))
+```
+
+**REGULATION TYPE (GROUP)**
+
+```{r, echo=F}
+lc[c("reg_type","reg_type_label")] |> unique() 
+```
+
+**REGULATORY RULE**
+
+```{r, echo=F}
+lc[c("reg_rule","reg_rule_label")] 
+```
+
+
+**REGULATORY ACTION**
+
+```{r, echo=F}
+lc[c("reg_rule","reg_action","reg_action_label")] |> unique() 
+```
+
+
+```{r, echo=F}
+dd <- dplyr::select( dd, -reg_rule_label )
+nrow1 <- nrow(dd)
+d <- merge( dd, lc, by="reg_rule_abbr", all.x=T, sort=F )
+nrow2 <- nrow(dd)
+
+d$reg_body <- d$reg_body_label
+d$reg_body[ d$reg_body == "Other" ] <- "OT"
+
+d$reg_body[ d$reg_body == "" ] <- "NS" # non-specific or not specified 
+d$reg_body[ is.na(d$reg_body) ] <- "NS"
+
+d$reg_body_label[ d$reg_body_label == "AG" ] <- "Attorney General"
+d$reg_body_label[ is.na(d$reg_body_label) ] <- "Not Specific"
+
+d <- dplyr::arrange( d, state, id3 )
+
+if( nrow1 != nrow2 ){ break }
+```
+
+
+<br>
+<br>
+
+```{r, echo=F}
+head(d)
+```
+
+
+## Standardize State Names
+
+
+```{r, echo=F}
+# st.names.file <- "https://raw.githubusercontent.com/jasonong/List-of-US-States/refs/heads/master/states.csv"
+# ST <- read.csv(st.names.file)
+# names(ST) <- c("state","state_abbr")
+
+# setdiff( unique( d$state ), ST$state ) 
+# ST$state[ ST$state == "District of Columbia" ] <- "Washington, D.C."
+# dput(ST)
+
+ST <-
+structure(list(state = c("Alabama", "Alaska", "Arizona", "Arkansas", 
+"California", "Colorado", "Connecticut", "Delaware", "Washington, D.C.", 
+"Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", 
+"Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Montana", 
+"Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico", 
+"New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", 
+"Oregon", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+"Mississippi", "Missouri", "Pennsylvania", "Rhode Island", "South Carolina", 
+"South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", 
+"Washington", "West Virginia", "Wisconsin", "Wyoming"), state_abbr = c("AL", 
+"AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", 
+"ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MT", "NE", "NV", 
+"NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "MD", "MA", 
+"MI", "MN", "MS", "MO", "PA", "RI", "SC", "SD", "TN", "TX", "UT", 
+"VT", "VA", "WA", "WV", "WI", "WY")), row.names = c(NA, -51L), 
+class = "data.frame")
+```
+
+```{r, echo=F}
+head( ST )
+```
+
+
+```{r, echo=F}
+d <- merge( d, ST, by="state", all.x=T )
+```
+
+
+
+## Fix IDs
+
+The new ID format base includes the state, regulation class, regulation type, and the regulatory body. 
+For regulatory body: 
+
+- AG: At tourney General 
+- OT: Other
+- NS: Not Specified in the LC Field
+
+```{r, echo=F}
+# DROP STATE ROWS
+
+# nrow(d)
+d <- d[ d$type_body_combined != "STATE", ]
+# nrow(d)
+
+d$IDx <- paste0( d$state_abbr, "-", 
+                 d$reg_type,   "-", 
+                 d$reg_rule,   "-", d$reg_body  )
+
+# NEW ID FORMAT 
+head( unique( d$IDx ), 10 )
+```
+
+
+```{r, echo=F}
+d$reg_x <- ifelse( is.na(d$notes), 0, 1 )
+d$reg_x[ d$notes == "" ] <- 0
+
+
+d <- 
+    d %>% 
+    group_by( IDx ) %>% 
+    mutate( idn = row_number(),
+            n_id=sum(reg_x) )
+
+d$idn[ d$n_id == 0 ] <- 0
+
+
+id_xxx <- str_pad( d$idn, side="left", pad="0", width=3 )
+d$ID <- paste0( d$IDx, "-", id_xxx )
+
+
+d <- 
+    d %>% 
+    group_by( state_abbr, reg_type, reg_rule, ) %>% 
+    mutate( n_rule=sum(reg_x) )
+
+d <- 
+    d %>% 
+    group_by( state_abbr, reg_type ) %>% 
+    mutate( n_type=sum(reg_x) )
+
+
+d <- 
+    d %>% 
+    group_by( state_abbr ) %>% 
+    mutate( n_state=sum(reg_x) )
+
+```
+
+
+New ID format with some added counts for data quality inspection purposes.
+
+- n_id: number of statutes per reg (rule class + rule + agency) 
+- n_rule: number of statutes per reg (rule class + rule) 
+- n_type: number of statutes per reg group (rule class)
+- n_state: number of nonprofit statutes within the state  (not unique)
+
+<br>
+
+```{r, echo=F}
+d[ c("ID","reg_indicator","n_id","n_rule","n_type","n_state") ] |> head(25)
+```
+
+<br>
+
+Note that we are currently only counting rows that contain any data. It appears that this version includes rows as placeholders (there is one row for each regulatory type, even if there is no statute within the state pertaining to the issue). 
+
+The **reg_x** field is a count of those that had some info on the statutes in the notes (notes seemed to be more complete than the statute text field).
+
+```
+#  reg_x = 1 if there were notes
+#  in that row; 0 otherwise
+
+d$reg_x <- ifelse( is.na(d$notes), 0, 1 )
+d$reg_x[ d$notes == "" ] <- 0
+```
+
+```{r, echo=F}
+d[ c("ID","reg_x","reg_indicator","n_id") ] |> head(25)
+```
+
+Any case with no statute or notes listed is coded as a count of zero here. That's different than states where the indicator is reported as "NO" in the spreadsheet (many rows did not include a YES/NO value for the indicator). **We need to double-check this.**  
+
+
+<br>
+<hr>
+<br>
+
+
+# Fix Data Ecoding Problems
+
+
+## Example Problem Cases 
+
+
+**Section Numbers Converting to Dates:**
+
+```
+§ 7-6-55  -->  7/6/1955
+§ 10-3810 -->  10/1/3810
+```
+
+**Inconsistent Input in Raw Files:**
+
+
+|Section Code        |State                |division   |section           |
+|:-------------------|:--------------------|:----------|:-----------------|
+|552.1               |oklahoma             |NA         |18-552-1          |
+|552.6               |oklahoma             |NA         |18-552-6          |
+|50-22-01(2)(a)      |NA                   |NA         |NA                |
+|50-22-01(2)(b)(6)   |NA                   |NA         |NA                |
+|50-22-01(2)(b)(4))  |NA                   |NA         |NA                |
+|82.356              |nevada               |NA         |82.35600000000001 |
+|617.1420            |florida              |NA         |617.1420000000001 |
+|21-19               |nebraska             |NA         |21-19-141         |
+|21-1977             |nebraska             |NA         |21-1977           |
+|14-3-1041           |georgia              |part-4     |14-3-1041         |
+|14-3-1005           |georgia              |part-1     |14-3-1005         |
+|29-410.03           |district-of-columbia |29-410-03  |index.html        |
+|29-410.01           |district-of-columbia |29-410-01  |index.html        |
+
+
+
+
+## Current Fixes 
+
+To preserve statute sections as text and prevent them from being read as dates, a {SS} value is added:
+
+- {SS}: 10A-3-5.04 
+- {SS}: 13A-9-71(e)		
+- {SS}: 10A-1-4.02		
+
+A universal citation field is created from: 
+
+- state_abbr 
+- code_label: "Code" or alternative name for state statutes 
+- code_annotated: is the cited text the annotated version? 
+- code_section: section cited 
+
+```{r, echo=F}
+d$code_label <- "Code"
+
+combine_sections <- function( x1, x2 ){
+  if( is.na(x1) & is.na(x2) ){ return("") }
+  if( is.na(x1) & ! is.na(x2) ){ return(x2) }
+  if( ! is.na(x1) & is.na(x2) ){ return(x1) }
+  if( x1 == x2 ){ return(x1) }
+  xx <- paste0( x1, " ;; ", x2 )
+  return(xx)
+}
+
+x1 <- d$code_section1 
+x2 <- d$code_section2 
+
+d$code_section <- purrr::map2_chr( x1, x2, combine_sections )
+
+# PREVENT DATE CONVERSIONS BY
+# ALWAYS KEEPING SECTIONS AS TXT
+
+add_ss <- function(x){
+  na.rows <- is.na(x) | x == ""
+  x <- paste0( "{SS}: ", x )
+  x[ na.rows ] <- ""
+  return(x)
+}
+
+d$code_section  <- add_ss( d$code_section )
+d$code_section1 <- add_ss( d$code_section1 )
+d$code_section2 <- add_ss( d$code_section2 )
+
+
+
+# CREATE UNIV CITATION FIELD
+
+
+d$code_annotated <- "no"
+
+annotated <- ifelse( d$code_annotated == "yes", "Annotated ", "" )
+
+d$code_univ_cite <- 
+  paste0( d$state_abbr, " ", 
+          d$code_label, " ", 
+          annotated, 
+          d$code_section  )
+
+d$code_univ_cite[ d$code_section == "" ] <- ""
+
+d$code_univ_cite <- 
+  gsub( "\\{SS\\}:", "\U00A7", # "§",  # 
+        d$code_univ_cite, perl = TRUE )
+
+d$code_univ_cite <- 
+  gsub( " ?;; ?$", "", d$code_univ_cite )
+
+# d$code_univ_cite <-
+#   stringi::stri_conv( d$code_univ_cite, "UTF-8", "latin1" )
+
+
+#### REORDER 
+
+new.order <-
+c("ID","state", "state_abbr",
+  "reg_rule_abbr", "reg_indicator", "reg_x", 
+  "n_id",  "n_rule", "n_type", "n_state",
+  "reg_type", "reg_type_label", "reg_rule", "reg_rule_label", 
+  "reg_action", "reg_action_label", "reg_body","reg_body_label",
+  "code_univ_cite", "code_state",
+  "code_label", "code_annotated",
+  "code_division", 
+  "code_section","code_section1","code_section2", 
+  "code_text", "notes",
+  "code_year_enacted", "code_change_year", "code_change_type",       
+  "section_original", "v0", "v1", 
+  "section_code_re", "section1", "first_element",   
+  "IDx", "idn", "id1", "id2", "id3", "id4", 
+  "type_body_combined" )
+
+d <- d[ new.order ]
+```
+
+
+```{r, echo=F}
+head( as.data.frame(d),10)
+```
+
+
+## Save Combined Dataset
+
+
+```{r, echo=F}
+keep <-
+  c("code_division", "code_section1", "code_section2", 
+    "code_year_enacted","code_change_year", 
+    "code_change_type", "section_original", 
+    "v0", "v1", "section_code_re", 
+    "section1", "first_element" )
+
+d5 <- d[ keep ] |> as.data.frame()
+d5[ is.na(d5) ] <- "" 
+
+fx <- function(i){
+  x <- d5[i,] |> unlist()
+  x2 <- paste0( x[x!=""], collapse=" ;; " )
+  return(x2)
+}
+
+row.id <- 1:nrow(d5)
+TXT <- purrr::map_chr( row.id, fx )
+
+d$ALLSECTXT <- TXT
+
+# head( d$ALLSECTXT, 25 )
+```
+
+```{r}
+readr::write_excel_csv( d, "02-data-inter/ALL-STATES-FORMATTED.CSV", na="" )
+```
+
+
+<br>
+<hr>
+<br>
+
+# Summary Stats
+
+## Recreate Legal Compendium
+
+```{r, echo=F}
+library( tidyr )
+
+t <- 
+  d %>% 
+  group_by( state_abbr, reg_rule, reg_indicator ) %>%
+  summarize( n=sum(reg_x) ) 
+
+t %>% 
+  filter( n > 0 ) %>% 
+  select( -n ) %>%
+  pivot_wider(
+    names_from = reg_rule, 
+    values_from = reg_indicator
+  ) %>%
+  kableExtra::kbl() %>%
+  kable_paper()
+
+```
+
+
+## Regulation Coverage
+
+```{r, echo=F, fig.height=15}
+
+tb2 <- 
+  d %>% 
+  group_by( reg_rule, state_abbr ) %>%
+  summarize( yes=ifelse( sum(reg_x,na.rm=T) > 0, 1, 0 ) ) %>%
+  group_by( reg_rule ) %>%
+  summarize( n=sum(yes) )
+  
+V1 <- tb2[["n"]]
+names(V1) <- tb2[["reg_rule"]]
+
+par( mar=c(3,5,3,2) )
+barplot( 
+  sort(V1), 
+  col="gray30", 
+  horiz=T, 
+  las=1,
+  family="mono", 
+  cex.names=1.2, 
+  cex.axis=1.5 )
+
+abline( v=c(10,20,30,40), lwd=3, col="white" )
+abline( v=c(5,15,25,35,45), lty=2, lwd=2, col="white" )
+
+title( main="Number of States with Nonprofit Regulations by Type", cex.main=1.8 )
+```
+
+
+## State Environments
+
+```{r, echo=F, fig.height=20}
+
+tb3 <- 
+  d %>% 
+  group_by( state_abbr, reg_rule ) %>%
+  summarize( yes=ifelse( sum(reg_x,na.rm=T) > 0, 1, 0 ) ) %>%
+  group_by( state_abbr ) %>%
+  summarize( n=sum(yes) )
+  
+V3 <- tb3[["n"]]
+names(V3) <- tb3[["state_abbr"]]
+
+par( mar=c(3,5,3,2) )
+barplot( 
+  sort(V3,d=T), 
+  col="darkorange4", 
+  horiz=T, 
+  las=1,
+  family="mono",
+  cex.axis=1.5,
+  cex.names=1.3)
+
+abline( v=c(10,20,30), lwd=3, col="white" )
+abline( v=c(5,15,25,35), lty=2, lwd=2, col="white" )
+
+txt <- "Number of Nonprofit Regulatory Types by State"
+title( main=txt, cex.main=1.8, col.main="darkorange4" )
+```
+
+
+
+```{r, echo=F, fig.height=20}
+
+tb4 <- 
+  d %>% 
+  group_by( state_abbr ) %>%
+  summarize( N = sum(reg_x,na.rm=T) ) 
+  
+V4 <- tb4[["N"]]
+names(V4) <- tb4[["state_abbr"]]
+
+par( mar=c(3,5,3,2) )
+barplot( 
+  sort(V4,d=T), 
+  col="firebrick4", 
+  horiz=T, 
+  las=1,
+  family="mono",
+  cex.axis=1.5,
+  cex.names=1.3 )
+
+abline( v=c(10,20,30,40,50,60), lwd=3, col="white" )
+abline( v=c(5,15,25,35,45,55), lty=2, lwd=2, col="white" )
+
+txt <- "Number of Nonprofit Statutes by State"
+title( main=txt, cex.main=1.8, col.main="firebrick4" )
+```
+
+<br>
+<hr>
+<br>
+
+
+# Standardizing Citation Formats
+
+Statutes are published in books called codes, which present laws for a particular jurisdiction arranged by subject.
+
+
+Statute citations have a volume (federal) or state/municipality (local), the name of the cited code, a section, and a date:
+
+Example: 42 U.S.C. § 7706(a) (1994).
+42 = Volume that contains the statue
+U.S.C. = Abbreviation for the code
+7706(a) = Section of the code being cited
+1994 = Year the code volume was published
+
+Universal Citation
+
+A "media-neutral" or "vendor-neutral" citation. Generally, creating a citation to a legal source allows a reader to more efficiently locate it. The citation we provide here is one that is media-neutral and does not depend on being located in a print edition of a book.
+
+This citation is based on the second edition of the American Association of Law Libraries "Universal Citation Guide".
+
+
+- Code State
+- Code Label - name of the code publication (usually just "Code")
+- Are we citing the annotated version? 
+- Year 
+- Section1
+- Section2 - end section if multiple sections listed   
+- Note (source, condition, exception)
+
+For example: 
+
+- IA Code § 602.1614 
+- IA Code § 602.1614 - 602.1615
+- IA Code § 602.1614 (Westlaw current through P.L. 116-193)
+
+
+## EXAMPLES
+
+
+### Abbreviations
+
+Statutes are published in books called codes, which present laws for a particular jurisdiction arranged by subject.
+
+In **most** cases there is one official "code book" (catalog of the current laws) that contains all of the individual statutes. Thus "statute" and "code" might be used interchangeably in citations or references (although technically the statute is a section within the code). Typically the _**statute_ref**_ should be labeled as **CODE**. 
+
+- G.C. § 43-17-5 (georgia code)
+- Ga ST § 14-3-1430 (georgia statutes?)
+- **GA Code § 14-3-1430** *{universal}* 
+
+The exceptions is when states have specialized codes for specific agencies or if there are multiple jurisdictions or municipalities that might enforce a law, in which case the specific code must be noted:  
+
+- Cal. Prob. Code § 141. [PROBATE CODE]
+- CA Corp Code (2023) § 15903.01  [CORPORATE CODE]
+- Cincinnati, Ohio, Municipal Code § 302-5.
+- Des Moines, Iowa, Municipal Code § 6.3.
+
+
+
+### Code Names
+
+In some states major divisions of the code are designated by name rather than by number. California, for example, has [28 different codes](https://leginfo.legislature.ca.gov/faces/codes.xhtml) corresponding to functional areas of the law. 
+
+- Business and Professions Code - BPC
+- Civil Code - CIV
+- Code of Civil Procedure - CCP
+- Commercial Code - COM
+- Corporations Code - CORP
+- etc.   
+
+Thus "CA Code § 5830" is underspecified because it could mean either: 
+
+- CA WIC Code § 5830 (Welfare and Institutions Code) 
+- CA PRC Code § 5830 (Public Resources Code) 
+
+Kentucky uses "Revised Statutes" instead of "Code":
+
+- Ky. Rev. Stat. § 367.652 
+- KRS § 273.320 
+
+
+### Annotated Versions
+
+Many codes are published in two editions – the official edition and an annotated edition with notes about related cases and articles.
+
+- O.C.G.A. § 43-17-3 (official code of georgia annotated)
+- Ga. Code Ann., § 14-3-1420
+- **GA Code Annotated § 14-3-1430** *{universal}* 
+
+### Notes and Conditions 
+
+If the citation is taken from a source that requires citation, include a source field: 
+
+- IA Code (YEAR) § 602.1614 (Westlaw current through P.L. 116-193)
+
+Should we cite the year before the Section Symbol instead of at the end to differentiate notes and sources from years, otherwise it would have double parentheses: 
+
+- IA Code § 602.1614 (YEAR) (Westlaw current through P.L. 116-193)
+
+Do we need to add a condition or notes field as well? 
+
+- Ga. Code Ann., § 14-3-1041: only required if amending to operate for profit
+- **GA Code Annotated § 14-3-1041 (only required if amending to operate for profit)** 
+
+
+### Multiple Sections Cited 
+
+If the referenced sections are adjacent then add an ending section: 
+
+AND:
+
+- F.S.A. § 496.407(1)(b) and (c)  
+- **FL Statutes Annotated § 496.407(1)(b) - § 496.407(1)(c)** *{universal}*    
+
+OR;
+
+- F.S.A. § 496.409; F.S.A. § 496.410  
+- **FL Code Annotated § 496.409 - § 496.410** *{universal}*  
+
+If not immediately adjacent they should be recorded as two separate rows in the data: 
+
+- Ga. Code Ann. § 14-3-1005; GA ST § 14-3-1007
+- **GA Code Annotated § 14-3-1005** *{universal}* 
+- **GA Code Annotated § 14-3-1007** *{universal}* 
+
+
+## Years
+
+If the provision being cited is currently in effect and has not been the subject of recent change, no date element need be included. However, if the provision being cited has, by the time of writing, been repealed or amended or if it has only recently been enacted or revised, the date of a compilation that contains the language cited should be provided in parentheses. 
+
+- Iowa Code (2020) § 1606(1)(a) 
+- Iowa Code (2012) § 1606(1)(a) (prior to 2013 amendment)
+- Iowa Code (2012) § 1606(1)(a) (eff. 7/1/2013)
+
+Unless the citation's context furnishes the information, a parenthetical note identifying the amending legislation and clarifying whether the citation refers to the version in effect before or after the change may be called for. The precise form this information takes will be governed by the form in which the compilation relied upon presents its "as of" date.
+
+- GA ST § 14-3-1430 (Amended by 2023 Ga. Laws 260,§ 1-1, eff. 7/1/2023)
+- **GA Code (2023) § 14-3-1430** *{universal}* 
+
+Need to add a field to capture the bill that changed the law? 
+
+- **change field: Amended by 2023 Ga. Laws 260,§ 1-1**
+
+
+
+## Time and Revision Fields 
+
+
+### Example 
+
+[GA Code § 33-24-47.1 (2023)](https://law.justia.com/codes/georgia/title-33/chapter-24/article-1/section-33-24-47-1/)
+
+Note that "article" is not a part of the citation. 
+
+**Justia dot com Representation:**
+
+```
+2023 CODE OF GEORGIA:
+
+Title 33         - INSURANCE (§§ 33-1-1 — 33-66-8)
+Chapter 24       - INSURANCE GENERALLY (§§ 33-24-1 — 33-24-98)
+Article 1        - GENERAL PROVISIONS (§§ 33-24-1 — 33-24-59.33)
+Section 33-24-47 - Notice required of termination or nonrenewal, increase in premium rates, or change restricting or reducing coverage; failure of insurer to comply
+```
+
+**The URL Structed Similarly:**
+
+```
+https://law.justia.com/codes/georgia/title-33/chapter-24/article-1/section-33-24-47-1/
+```
+
+How to determine which of these updates impacted this specific law? 
+
+Also, is this a legislative reference (ID and section of the bill), not a legal reference (ID and section of the code that the bill changed): 2019 Ga. Laws 140,§ 52?
+
+**Justia dot com:**
+
+```
+GA Code § 33-24-47.1 (2023)
+
+Amended by 2019 Ga. Laws 140,§ 52, eff. 7/1/2019.
+
+Amended by 2015 Ga. Laws 9,§ 33, eff. 3/13/2015.
+```
+
+## Time Fields 
+
+### Types of Change 
+
+- new law 
+- major change (substantive meaning change)
+- minor change (minor edits to clarify intent)
+- interpretive change (section not changed, but other changes impact)
+- repeal of a law 
+
+Note that a repeal would appear as a new row if it is not replaced by another law: 
+
+- GA Code (2015) § 33-24-47 
+- GA Code (2022) § 33-24-47 (repealed)
+
+The second entry designates a repeal of the 2015 law, the repeal passing in 2022. 
+
+
+
+
+
+
+
+
+
+
+
+
+<link href='https://fonts.googleapis.com/css?family=Fira Code' rel='stylesheet'> <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Anonymous+Pro" />
+
+
+```{css, echo=F}
+
+@import url('https://fonts.cdnfonts.com/css/aharoni');
+
+.title{ color: black; }
+
+h1 { 
+  color: #4C516D; 
+  margin-top: 60px;
+  font-size: 3em;
+  font-family: 'Aharoni', sans-serif;
+}
+
+h3, h4 { 
+  color: #5072A7; 
+  font-family: 'Aharoni', sans-serif;
+  font-size: 1.8em;
+}
+
+h2 { 
+  font-size: 2.3em;
+  margin-bottom: 30px;
+  color: #AF7817; 
+  margin-top: 40px;
+}
+
+img { margin-top: 40px;
+      margin-bottom: 50px;}
+      
+#TOC {
+   margin-top: 60px;
+   font-size: 0.9em;
+}
+
+a { color:#AF7817; } 
+
+
+.footer {
+  background-color:#726e6e;
+  height:340px;
+  color:white;
+  padding: 20px 3px 20px 3px;
+  margin:0px;
+  line-height: normal;
+}
+
+ 
+ 
+ table{
+   border-spacing:1px;
+   margin-top:80px;
+   margin-left: auto;
+   margin-right: auto;
+   align:center} 
+
+
+ 
+td{ padding: 6px 10px 6px 10px;
+    font-size:calc(0.7em + 0.25vw);
+    font-family: "Lucida Console", "Menlo", "Monaco", "Courier", monospace;
+} 
+
+th{ text-align: left; } 
+```
+
+

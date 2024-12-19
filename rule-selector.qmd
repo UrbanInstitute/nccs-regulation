@@ -1,0 +1,433 @@
+---
+title: "RULE SELECTOR DEMO"
+format:
+  html:
+    toc: true
+    toc-location: left
+    toc_float: no
+    toc-depth: 1
+    embed-resources: true
+    number-sections: false
+    number-depth: 1
+params:
+  title:
+    value: x
+  data:
+    value: x
+  dgf:
+    value: x
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( echo=FALSE, message=F, warning=F )
+```
+
+
+
+```{r, echo=F}
+library( dplyr )
+library( kableExtra )
+```
+
+
+```{r, echo=F, results="asis"}
+## Load State Files 
+
+wd <- "C:/Users/jdlec/Dropbox (Personal)/00 - URBAN/legal-compendium/LC_Text_Data_Merge"
+fn <- "ALL-STATES-FORMATTED.CSV"
+df <- read.csv( paste0( wd, "/", fn ) )
+```
+
+
+
+
+```{r, echo=F, results="asis"}
+ST <- 
+c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
+"HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
+"MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
+"NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY" )
+
+B1 <- rep( "**", 50 )
+B2 <- rep( "**", 50 )
+```
+
+
+```{r, echo=F, results="asis"}
+rules <-
+  c("BIFURC", "REGIOF", "ASSETS", "MERGER", "AMMEND", "VOLUNT", 
+"JUDICI", "ADMINI", "STATUT", "OVERSI", "FILING", "AUDITS", "THRESH", 
+"REGIST", "RELIGI", "SMALLO", "EDUCAT", "GOVMNT", "HOSPIT", "VETERA", 
+"FNDYES", "FNDNOS", "CTRUST", "PTOEDU", "CONGRE", "NONSOL", "MEMFRA", 
+"POLITI", "OTHTYP", "DISSOL", "BRDRMV", "COMREG", "COUNSL", "VENTUR", 
+"NOTICE", "DDONOR", "CNTRCT", "ANNUAL", "FINANC", "BONDNG")
+
+get_states <- function( RULE, df ){
+  df <- dplyr::filter( df, reg_rule == RULE )
+  ST <- df$state_abbr
+  ST_YES <- ST[ df$reg_indicator == "Yes" ] |> unique()
+  return( ST_YES )
+}
+```
+
+
+
+
+<br>
+<br>
+
+
+::: {.div1}
+
+
+```{r, echo=F, results="asis"}
+
+RULE <- "ASSETS"
+RULE_LABEL <- df$reg_rule_label[ df$reg_rule == RULE ] |> head(1)
+
+ACT  <- df[[ "reg_action_label" ]] 
+ACT  <- ACT[ df$reg_rule == RULE ] |> 
+         na.omit() |> 
+         unique()
+
+GROUP  <- df[[ "reg_type_label" ]] 
+GROUP  <- GROUP[ df$reg_rule == RULE ] |> 
+         na.omit() |> 
+         unique()
+
+ST_YES <- get_states( RULE, df )
+
+B1[ ! ST %in% ST_YES ] <- ""
+B2[ ! ST %in% ST_YES ] <- ""
+
+R1 <- paste0( B1[ 1:10], ST[ 1:10], B2[ 1:10], collapse=" " )
+R2 <- paste0( B1[11:20], ST[11:20], B2[11:20], collapse=" " )
+R3 <- paste0( B1[21:30], ST[21:30], B2[21:30], collapse=" " )
+R4 <- paste0( B1[31:40], ST[31:40], B2[31:40], collapse=" " )
+R5 <- paste0( B1[41:50], ST[41:50], B2[41:50], collapse=" " )
+
+cat( paste0( "## ", RULE_LABEL, "\n\n" ) )
+cat( paste0( "**", GROUP, "**\n\n" ) )
+cat( paste0( "**Regulatory Action: ", toupper(ACT), "**\n\n" ) )
+```
+
+<br>
+
+::: 
+
+<hr>  
+
+::: {.div2}  
+
+<br>
+
+```{r, echo=F, results="asis"}
+
+cat( paste0( "# ", length(ST_YES), " states have ", RULE, " regulations\n\n\n" ) )
+
+
+cat( paste0( R1, "\n\n" ) )
+cat( paste0( R2, "\n\n" ) )
+cat( paste0( R3, "\n\n" ) )
+cat( paste0( R4, "\n\n" ) )
+cat( paste0( R5, "\n\n" ) )
+```
+
+::: 
+
+
+
+
+<br>
+<hr>
+<br>
+
+
+```{r, echo=F, results="asis"}
+make_div3 <- function( id, df )
+{
+  # df state + type + rule + id
+  D    <- dplyr::filter( df, ID == id )
+  
+  CITE <- D[[ "code_univ_cite" ]]
+  BODY <- D[[ "reg_body_label" ]]
+  TXT  <- D[[ "code_text" ]]
+  NOTE <- D[[ "notes" ]]
+  
+  no.cite <- ( CITE == "" | is.na(CITE) )
+  no.note <- ( NOTE == "" | is.na(NOTE) )
+  
+  CITE2 <- substr( id, 4, 20 )
+  CITE  <- ifelse( no.cite, CITE2, CITE )
+  
+  cat( "::: {.div2} \n\n" )
+  cat( paste0( "# ", CITE, " \n\n" ) )
+  cat( ":::   \n\n" )
+  
+  cat( "::: {.div3} \n\n" )
+  cat( paste0( "**REGULATORY BODY:**  ", BODY, "\n\n" ) ) 
+  if( ! no.cite )
+  { cat( paste0( "**STATUTE TEXT:**  ", TXT, "\n\n" ) ) }
+  if( ! no.note )
+  { cat( paste0( "**NOTES:**  ", NOTE, "\n\n" ) ) }
+  
+  cat( "::: \n\n" )
+}
+
+DF_RULE  <- 
+  df %>%
+  dplyr::filter( reg_rule == RULE & reg_indicator == "Yes" )
+  
+purrr::walk( unique(DF_RULE$ID), make_div3, df )
+```
+
+
+
+<br>
+<hr>
+<br>
+
+
+
+
+
+<link href='https://fonts.googleapis.com/css?family=Fira Code' rel='stylesheet'> <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Anonymous+Pro" />
+
+
+```{css, echo=F}
+
+@import url('https://fonts.cdnfonts.com/css/aharoni');
+
+
+.div9 p { 
+    font-family: "Anonymous Pro";
+    font-size: 0.8em;
+    color: gray;
+    text-align: justify;
+}
+
+.div2 p strong { color:#E85A4F; }
+
+.div2 p { 
+  color:#5a6570;
+  font-weight: 800;
+  text-align: justify;
+  text-justify: inter-word;
+  font-size: 1.7em;
+  font-family: "Lucida Console", "Menlo", "Monaco", "Courier", monospace; }
+  
+
+body {background-color: #EAE7DC;}
+
+.title{ 
+  color: #8E8D8A;
+  font-weight: 800;
+  font-size: 2em; }
+
+.div1 h3 { 
+  /* color: #8E8D8A;  */
+  color: #5072A7;
+  /* color: #E7717D;  */ 
+  margin-top: 60px;
+  font-size: 2.4em;
+  text-transform: uppercase;
+  font-family: 'Aharoni', sans-serif;
+  /* font-family: Georgia, Times, "Times New Roman", serif; */ 
+  font-weight: 800;  
+  border-bottom:3px solid #C2B9B0; 
+  width:100%;
+}
+
+
+h2#toc-title { color: #5a6570; }
+  
+h2.anchored { 
+  font-size: 2.4em;
+  font-weight: 800;
+  margin-bottom: 10px;
+  /*  color: #E98074;   */
+  color: #5072A7;
+  /*  color: #5072A7;   */
+  /*  color: #5a6570;   */
+  margin-top: 20px;
+  /* font-family: "Lucida Console", "Menlo", "Monaco", "Courier", monospace; */
+}
+
+h1 { 
+  color: #E85A4F; 
+  /* color: #AFD275;  */ 
+  font-family: "Anonymous Pro";
+  font-size: 1.8em;
+  margin-top: 30px;
+  margin-bottom: 20px;
+  border-bottom:2px solid #C2B9B0;
+}
+
+
+
+img { margin-top: 40px;
+      margin-bottom: 50px;}
+      
+#TOC {
+   margin-top: 60px;
+   font-size: 0.9em;
+}
+
+a { color: steelblue; } 
+
+ 
+blockquote p strong { color:#5a6570; }
+
+
+
+
+
+ table{
+   border-spacing:1px;
+   margin-top:80px;
+   margin-left: auto;
+   margin-right: auto;
+   align:center} 
+
+
+ 
+td{ padding: 6px 10px 6px 10px;
+    font-size:calc(0.7em + 0.25vw);
+    font-family: "Lucida Console", "Menlo", "Monaco", "Courier", monospace;
+} 
+
+th{ text-align: left; } 
+
+
+
+.parent {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  grid-template-rows: auto;  
+  grid-column-gap: 20px;
+  grid-row-gap: 10px;
+  grid-template-areas:
+    "a"
+    "b"
+    "c";
+}
+
+
+.div1 { 
+  grid-area: a;
+  padding-bottom: 15px;
+}
+
+.div2 { 
+    grid-area: b;
+    padding-left: 30px;
+}
+
+.div3 { 
+    grid-area: c;
+    padding-left: 50px;
+}
+
+
+
+h5 { font-size: 0.9em; }
+
+
+
+.div3 p { 
+    "Lucida Console", "Menlo", "Monaco", "Courier", monospace;
+    font-size: 0.9em;
+}
+
+
+
+.div9 p { 
+    font-family: "Anonymous Pro";
+    font-size: 0.8em;
+    color: gray;
+    text-align: justify;
+}
+
+.div1 strong { 
+    font-family: "Calibri", sans-serif;
+    font-size: 1.6em;
+    color: black;
+}
+
+
+.div4 table {
+    margin-left: 20px;
+    font-family: "Anonymous Pro";
+}
+
+.div5 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+.div6 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+.div7 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+.div12 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+.div13 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+.div14 td { 
+    font-family: "Anonymous Pro";
+    font-size: 0.9em;
+}
+
+
+.div5 table {
+    margin-left: 20px;
+}
+
+.table>tbody {
+    border-top: none;
+}
+
+.table>:not(caption)>*>* {
+    padding: 0rem 0rem;
+}
+
+tbody, tfoot, tr, td, th {
+    border-color: inherit;
+    border-style: none; 
+    border-width: 0;
+}
+
+
+
+@media print {
+   body {
+   display:table;
+   table-layout:fixed;
+   padding-top:2.5cm;
+   padding-bottom:3cm;
+   padding-left:1.5cm;
+   padding-right:1.5cm;
+   height:auto;
+    }
+}
+```
+
+
+
+
+
