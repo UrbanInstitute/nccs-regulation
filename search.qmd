@@ -1,0 +1,85 @@
+---
+title: "Search the Legal Compendium"
+format: 
+  html:
+    page-layout: full
+editor: visual
+---
+
+```{r include=FALSE}
+library( DT )
+library( readr )
+library( dplyr )
+library( kableExtra )
+library( readxl )
+```
+
+```{r}
+#| include: false
+
+###
+###  LOAD LEGACY DESCRIPTION TABLE
+###
+
+path <- "C:/Users/jdlec/Dropbox (Personal)/00 - URBAN/legal-compendium/LC_Text_Data_Merge/"
+fn <- "ALL-STATES-FORMATTED-V10.xlsx"
+d <- read_excel( paste0(path,fn), col_names=TRUE, sheet = "Sheet1" )
+
+
+keep <- 
+  c("state","reg_type","reg_rule","reg_action",
+    "code_univ_cite","code_text")
+
+d2 <- d[keep]
+
+d2 <- dplyr::filter( d2, ! is.na(code_univ_cite) )
+
+d2$state <- factor(d2$state)
+d2$reg_type <- factor(d2$reg_type)
+d2$reg_rule <- factor(d2$reg_rule)
+d2$reg_action <- factor(d2$reg_action)
+```
+
+<br>
+
+```{r}
+#| echo: false
+
+DT::datatable( d2, 
+               filter="top", 
+               rownames=FALSE,
+               extensions = 'Buttons',
+               options = list( pageLength = 10,
+                               autoWidth = TRUE,
+                               dom = 'Bfrtip',
+                               buttons = c('csv', 'excel'),
+                               columnDefs = list( 
+                                 list(
+                                   width = "80px",
+                                   targets = c( 0, 1, 2 )
+                                 ), list(
+                                   width = "150px",
+                                   targets = c(3)
+                                 ))))
+```
+
+<br>
+
+<hr>
+
+<br>
+
+### Category Descriptions
+
+```{r}
+#| echo: false
+#| eval: false
+ 
+DT::datatable( df,
+    options = list( dom = "t",
+                    pageLength = 10000 ),
+    rownames = FALSE )  # %>%
+# formatStyle( columns = c("LEV1"),   fontWeight = 'bold' ) %>% 
+# formatStyle( columns = c("LEV234"), fontWeight = 'bold' ) %>%
+# formatStyle( columns = c("LEV5"),   fontWeight = 'bold' )
+```
